@@ -82,4 +82,3 @@ steps:
   depends_on:
     - sign-win
     - sign-linux
-    - sign-mac
