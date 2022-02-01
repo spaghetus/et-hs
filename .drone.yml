@@ -50,7 +50,7 @@ steps:
 - name: build-linux
   image: rust
   commands:
-    - apt update && apt install libasound2-dev && rm -rf /var/apt/lists
+    - apt-get update && apt-get install -y libasound2-dev && rm -rf /var/apt/lists
     - make out/linux.tar.lzma
   when:
     event: tag
