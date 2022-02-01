@@ -1,0 +1,85 @@
+kind: pipeline
+type: docker
+name: autobuild
+when:
+  event: tag
+
+steps:
+
+# SETUP GPG
+
+- name: gpg-setup
+  image: bleala/gpg
+  environment:
+    PRIVATE:
+      from_secret: wolosign
+    PUBLIC:
+      from_secret: wolopub
+  commands:
+    - echo $PRIVATE | base64 -d > ci.key
+    - echo $PUBLIC | base64 -d > pub.key
+    - ls -la ci.key
+    - gpg --import ci.key pub.key
+    - gpg --armor --output ci.wolo.dev.pub.asc --export 7A439D884F34F915A63DC15A8E5E774E31D79A4F
+  when:
+    event: tag
+
+# WINDOWS
+
+- name: build-win
+  image: rustembedded/cross:x86_64-pc-windows-gnu
+  commands:
+    - make out/windows.zip
+  when:
+    event: tag
+  depends_on:
+    - gpg-setup
+- name: sign-win
+  image: bleala/gpg
+  commands:
+    - gpg --import ci.key pub.key
+    - gpg --output out/windows.zip.sig --detach-sig out/windows.zip
+  when:
+    event: tag
+  depends_on:
+    - build-win
+
+# LINUX
+
+- name: build-linux
+  image: rustembedded/cross:x86_64-unknown-linux-gnu
+  commands:
+    - make out/linux.tar.lzma
+  when:
+    event: tag
+  depends_on:
+    - gpg-setup
+- name: sign-linux
+  image: bleala/gpg
+  commands:
+    - gpg --import ci.key pub.key
+    - gpg --output out/linux.tar.lzma.sig --detach-sig out/linux.tar.lzma
+  when:
+    event: tag
+  depends_on:
+    - build-linux
+
+# PUBLISH
+
+- name: publish-github
+  image: plugins/github-release
+  settings:
+    api_key:
+      from_secret: pat
+    files:
+      - out/win.tar.gz
+      - out/win.tar.gz.sig
+      - out/linux.tar.gz
+      - out/linux.tar.gz.sig
+      - ci.wolo.dev.pub.asc
+  when:
+    event: tag
+  depends_on:
+    - sign-win
+    - sign-linux
+    - sign-mac
