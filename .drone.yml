@@ -29,6 +29,7 @@ steps:
 - name: build-win
   image: rust
   commands:
+    - apt-get update && apt-get install -y mingw-w64 && rm -rf /var/apt/lists
     - rustup target add x86_64-pc-windows-gnu
     - make out/windows.zip
   when:
@@ -50,7 +51,7 @@ steps:
 - name: build-linux
   image: rust
   commands:
-    - apt-get update && apt-get install -y libasound2-dev && rm -rf /var/apt/lists
+    - apt-get update && apt-get install -y libasound2-dev libudev-dev && rm -rf /var/apt/lists
     - make out/linux.tar.lzma
   when:
     event: tag
